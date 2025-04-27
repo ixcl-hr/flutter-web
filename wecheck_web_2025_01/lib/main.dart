@@ -398,13 +398,13 @@ class QRViewExample extends StatefulWidget {
   State<StatefulWidget> createState() => _QRViewExampleState();
 }
 
+// First, let's update the QR scanner page implementation
 class _QRViewExampleState extends State<QRViewExample> {
   Barcode? result;
   QRViewController? controller;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  bool processingCode = false;
 
-  // In order to get hot reload to work we need to pause the camera if the platform
-  // is android, or resume the camera if the platform is iOS.
   @override
   void reassemble() {
     super.reassemble();
@@ -419,104 +419,101 @@ class _QRViewExampleState extends State<QRViewExample> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('QR Scanner'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context, 'Scan cancelled'),
+        ),
       ),
-      body: Column(
+      body: Stack(
         children: <Widget>[
-          Expanded(flex: 4, child: _buildQrView(context)),
-          Expanded(
-            flex: 1,
-            child: FittedBox(
-              fit: BoxFit.contain,
+          Expanded(child: _buildQrView(context)),
+          Positioned(
+            bottom: 10,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.black54,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   if (result != null)
-                    Text('Data: ${result!.code}')
+                    Text(
+                      'Data: ${result!.code}',
+                      style: const TextStyle(color: Colors.white),
+                    )
                   else
-                    const Text('Scan a code'),
+                    const Text(
+                      'Scan a QR code',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  const SizedBox(height: 8),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: <Widget>[
-                      Container(
-                        margin: const EdgeInsets.all(8),
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await controller?.toggleFlash();
-                            setState(() {});
-                          },
-                          child: FutureBuilder(
-                            future: controller?.getFlashStatus(),
-                            builder: (context, snapshot) {
-                              return Text('Flash: ${snapshot.data}');
-                            },
-                          ),
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.flash_on, color: Colors.white),
+                        onPressed: () async {
+                          await controller?.toggleFlash();
+                          setState(() {});
+                        },
                       ),
-                      Container(
-                        margin: const EdgeInsets.all(8),
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await controller?.flipCamera();
-                            setState(() {});
-                          },
-                          child: FutureBuilder(
-                            future: controller?.getCameraInfo(),
-                            builder: (context, snapshot) {
-                              if (snapshot.data != null) {
-                                return const Text('Flip Camera');
-                              } else {
-                                return const Text('Loading...');
-                              }
-                            },
-                          ),
-                        ),
-                      )
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: <Widget>[
-                      Container(
-                        margin: const EdgeInsets.all(8),
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(context, result?.code ?? 'No data');
-                          },
-                          child: const Text('Done',
-                              style: TextStyle(fontSize: 20)),
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.flip_camera_ios,
+                            color: Colors.white),
+                        onPressed: () async {
+                          await controller?.flipCamera();
+                          setState(() {});
+                        },
                       ),
+                      if (kIsWeb)
+                        IconButton(
+                          icon: const Icon(Icons.refresh, color: Colors.white),
+                          onPressed: () async {
+                            // Try to restart the camera on web
+                            await controller?.pauseCamera();
+                            await Future.delayed(
+                                const Duration(milliseconds: 300));
+                            await controller?.resumeCamera();
+                          },
+                        ),
                     ],
                   ),
                 ],
               ),
             ),
-          )
+          ),
+          if (processingCode)
+            Container(
+              color: Colors.black54,
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
         ],
       ),
     );
   }
 
   Widget _buildQrView(BuildContext context) {
-    // For this example we check how width or tall the device is and change the scanArea and overlay accordingly.
-    var scanArea = (MediaQuery.of(context).size.width < 400 ||
+    // Adjust scan area based on device size
+    double scanArea = (MediaQuery.of(context).size.width < 400 ||
             MediaQuery.of(context).size.height < 400)
         ? 150.0
         : 300.0;
-    // To ensure the Scanner view is properly sizes after rotation
-    // we need to listen for Flutter SizeChanged notification and update controller
+
     return QRView(
       key: qrKey,
       onQRViewCreated: _onQRViewCreated,
       overlay: QrScannerOverlayShape(
-          borderColor: Colors.red,
-          borderRadius: 10,
-          borderLength: 30,
-          borderWidth: 10,
-          cutOutSize: scanArea),
+        borderColor: Colors.blue,
+        borderRadius: 10,
+        borderLength: 30,
+        borderWidth: 10,
+        cutOutSize: scanArea,
+      ),
       onPermissionSet: (ctrl, p) => _onPermissionSet(context, ctrl, p),
+      formatsAllowed: const [BarcodeFormat.qrcode], // Focus on QR codes only
     );
   }
 
@@ -524,22 +521,63 @@ class _QRViewExampleState extends State<QRViewExample> {
     setState(() {
       this.controller = controller;
     });
+
+    // Listen for scanned codes
     controller.scannedDataStream.listen((scanData) {
-      setState(() {
-        result = scanData;
-        // Pop automatically when a code is found
-        if (result != null && result!.code != null) {
-          Navigator.pop(context, result!.code);
+      // Prevent multiple callbacks for the same QR code
+      if (!processingCode &&
+          scanData.code != null &&
+          scanData.code!.isNotEmpty) {
+        setState(() {
+          processingCode = true;
+          result = scanData;
+        });
+
+        // Give a small visual feedback before returning
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            Navigator.pop(context, scanData.code);
+          }
+        });
+      }
+    });
+
+    // For web specifically
+    if (kIsWeb) {
+      // Force camera permission dialog and handle initialization
+      Future.delayed(const Duration(milliseconds: 500), () async {
+        try {
+          await controller.resumeCamera();
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Camera initialization error: $e'),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
         }
       });
-    });
+    }
   }
 
   void _onPermissionSet(BuildContext context, QRViewController ctrl, bool p) {
     if (!p) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No camera permission')),
+        const SnackBar(
+          content: Text(
+              'Camera permission denied. QR scanning requires camera access.'),
+          duration: Duration(seconds: 3),
+        ),
       );
+
+      // Return to previous screen with error message if no permission
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          Navigator.pop(context, 'Camera permission denied');
+        }
+      });
     }
   }
 
@@ -547,5 +585,134 @@ class _QRViewExampleState extends State<QRViewExample> {
   void dispose() {
     controller?.dispose();
     super.dispose();
+  }
+}
+
+// Extension methods for HomePage QR functionality
+extension QRFeatures on _HomePageState {
+  void _handleQRScan(BuildContext context) {
+    if (kIsWeb) {
+      // For web platforms, we need a different approach
+      _showQROptions();
+    } else {
+      // For mobile platforms
+      Navigator.pushNamed(context, '/qr_scanner').then((value) {
+        if (value != null &&
+            value.toString() != 'Scan cancelled' &&
+            value.toString() != 'Camera permission denied') {
+          setState(() {
+            qrText = value.toString();
+          });
+        }
+      });
+    }
+  }
+
+  void _showQROptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Try Camera Scan'),
+                subtitle: const Text('Works in Chrome and Edge with HTTPS'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _attemptCameraQR();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.image),
+                title: const Text('Upload QR Image'),
+                subtitle: const Text('Select an image with a QR code'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImageQR();
+                },
+              ),
+              // Add HTML5 QR option specifically for web
+              if (kIsWeb)
+                ListTile(
+                  leading: const Icon(Icons.web),
+                  title: const Text('Use Web QR Scanner'),
+                  subtitle: const Text(
+                      'HTML5 based scanner (better web compatibility)'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _useWebQRScanner();
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _useWebQRScanner() {
+    if (kIsWeb) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Web QR Scanner'),
+          content: SizedBox(
+            width: 300,
+            height: 300,
+            child: Column(
+              children: [
+                const Text('For a production app, implement:'),
+                const SizedBox(height: 10),
+                const Text('1. HTML5 QR scanner using js_interop'),
+                const Text('2. Or use a web-specific package'),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _simulateWebQRScan();
+                  },
+                  child: const Text('Simulate Scan (Demo)'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  void _simulateWebQRScan() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Dialog(
+        child: Padding(
+          padding: EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Scanning...'),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    Future.delayed(const Duration(seconds: 2), () {
+      Navigator.pop(context);
+      setState(() {
+        qrText = "Example QR Code: https://flutter.dev";
+      });
+    });
   }
 }
