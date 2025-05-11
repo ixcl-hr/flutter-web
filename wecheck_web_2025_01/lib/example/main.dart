@@ -4,8 +4,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:image_picker_for_web/image_picker_for_web.dart'
-    show ImagePickerPlugin;
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:web_browser_detect/web_browser_detect.dart';
@@ -14,7 +12,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:wecheck_web_2025_01/main.dart';
 
-import 'widget/QRScanner.dart';
+import '../widget/QRScanner.dart';
 
 void main() {
   runApp(const MyApp());
@@ -26,9 +24,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter',
+      title: 'Flutter Web Features Demo',
       theme: ThemeData(
-        primarySwatch: Colors.orange,
+        primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       home: const HomePage(),
@@ -104,7 +102,7 @@ class _HomePageState extends State<HomePage> {
           if (permission == LocationPermission.denied) {
             setState(() {
               locationData =
-                  "Location permission denied. Please enable it in your settings.";
+                  "Location permission denied. Please enable it in your browser settings.";
             });
             return;
           }
@@ -113,7 +111,7 @@ class _HomePageState extends State<HomePage> {
         if (permission == LocationPermission.deniedForever) {
           setState(() {
             locationData =
-                "Location permissions permanently denied. Please enable in settings.";
+                "Location permissions permanently denied. Please enable in browser settings.";
           });
           return;
         }
@@ -173,55 +171,21 @@ class _HomePageState extends State<HomePage> {
         });
       }
 
-      XFile? photo;
-
-      try {
-        if (kIsWeb) {
-          // For web, we need to use the web-specific image picker
-          photo = await ImagePickerPlugin().getImage(
-            source: ImageSource.camera,
-            preferredCameraDevice: CameraDevice.front,
-          );
-        } else {
-          photo = await picker.pickImage(source: ImageSource.camera);
-        }
-      } catch (e) {
-        setState(() {
-          imageData = "Error accessing camera: $e";
-          AlertDialog(
-            title: const Text('Camera Access Denied'),
-            content: Text(imageData),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        });
-      }
-      if (kIsWeb) {
-        photo = await picker.pickImage(
-          source: ImageSource.camera,
-          preferredCameraDevice: CameraDevice.front,
-        );
-      } else {
-        photo = await picker.pickImage(source: ImageSource.camera);
-      }
+      final XFile? photo = await picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.front,
+      );
 
       if (photo != null) {
         if (kIsWeb) {
-          Image.network(photo.path);
           final bytes = await photo.readAsBytes();
           setState(() {
-            imageData = "Image captured: ${photo!.name}";
+            imageData = "Image captured: ${photo.name}";
             imageBytes = bytes;
           });
         } else {
           setState(() {
-            imageData = "Image captured: ${photo!.path}";
+            imageData = "Image captured: ${photo.path}";
           });
         }
       } else {
@@ -252,7 +216,7 @@ class _HomePageState extends State<HomePage> {
               SizedBox(height: 10),
               Text('1. Upload a QR code image'),
               Text('2. Allow camera access when prompted'),
-              // Text('3. For best experience, try Chrome or Edge')
+              Text('3. For best experience, try Chrome or Edge')
             ],
           ),
           actions: [
@@ -320,7 +284,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('We Check'),
+        title: const Text('Flutter Web Features Demo'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -332,11 +296,11 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.all(8),
                 margin: const EdgeInsets.only(bottom: 16),
                 color: Colors.amber.shade100,
-                // child: const Text(
-                //   'Note: Some features might require permission grants in your browser. '
-                //   'For the best experience, use Chrome or Edge.',
-                //   style: TextStyle(fontSize: 14),
-                // ),
+                child: const Text(
+                  'Note: Some features might require permission grants in your browser. '
+                  'For the best experience, use Chrome or Edge.',
+                  style: TextStyle(fontSize: 14),
+                ),
               ),
             Card(
               child: Padding(
