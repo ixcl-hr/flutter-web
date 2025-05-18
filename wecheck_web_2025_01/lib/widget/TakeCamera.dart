@@ -1,10 +1,9 @@
-// import 'dart:io';
-
-import 'package:cross_file/cross_file.dart';
-import 'package:flutter/foundation.dart';
+// import 'package:cross_file/cross_file.dart';
+// import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_picture_taker/flutter_picture_taker.dart';
 import 'package:gap/gap.dart';
+import 'package:image_picker/image_picker.dart';
 
 class Takecamera extends StatefulWidget {
   const Takecamera({super.key});
@@ -24,7 +23,7 @@ class _TakecameraState extends State<Takecamera> {
             children: [
               OutlinedButton(
                 onPressed: _takePicture,
-                child: const Text('Take picture01'),
+                child: const Text('Take picture02'),
               ),
               const Gap(8),
               Text(_image?.name ?? 'No name'),
