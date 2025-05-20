@@ -10,7 +10,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:web_browser_detect/web_browser_detect.dart';
 import 'package:universal_html/html.dart' as html;
-import 'package:flutter/foundation.dart' show kIsWeb;
+// import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:wecheck_web_2025_01/main.dart';
 
@@ -62,27 +62,25 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _checkWebCompatibility() async {
-    if (kIsWeb) {
-      final browser = Browser();
-      String browserWarning = '';
-      final currentUrl = html.window.location.href;
+    final browser = Browser();
+    String browserWarning = '';
+    final currentUrl = html.window.location.href;
 
-      // if (!browser..isChrome() && !browser.isFirefox() && !browser.isEdge()) {
-      //   browserWarning =
-      //       'For best experience, use Chrome, Firefox, or Edge browsers.';
-      // }
-      browserWarning = currentUrl;
+    // if (!browser..isChrome() && !browser.isFirefox() && !browser.isEdge()) {
+    //   browserWarning =
+    //       'For best experience, use Chrome, Firefox, or Edge browsers.';
+    // }
+    browserWarning = currentUrl;
 
-      if (browserWarning.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(browserWarning),
-              duration: const Duration(seconds: 5),
-            ),
-          );
-        });
-      }
+    if (browserWarning.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(browserWarning),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      });
     }
   }
 
@@ -93,34 +91,33 @@ class _HomePageState extends State<HomePage> {
 
     try {
       // For web, we need to explicitly request permission
-      if (kIsWeb) {
-        bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-        if (!serviceEnabled) {
-          setState(() {
-            locationData = "Location services are disabled.";
-          });
-          return;
-        }
 
-        LocationPermission permission = await Geolocator.checkPermission();
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() {
+          locationData = "Location services are disabled.";
+        });
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission();
-          if (permission == LocationPermission.denied) {
-            setState(() {
-              locationData =
-                  "Location permission denied. Please enable it in your settings.";
-            });
-            return;
-          }
-        }
-
-        if (permission == LocationPermission.deniedForever) {
           setState(() {
             locationData =
-                "Location permissions permanently denied. Please enable in settings.";
+                "Location permission denied. Please enable it in your settings.";
           });
           return;
         }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          locationData =
+              "Location permissions permanently denied. Please enable in settings.";
+        });
+        return;
       }
 
       // Get current position
@@ -144,19 +141,10 @@ class _HomePageState extends State<HomePage> {
       FilePickerResult? result = await FilePicker.platform.pickFiles();
 
       if (result != null) {
-        if (kIsWeb) {
-          setState(() {
-            fileData =
-                "Selected file: ${result.files.single.name}, Size: ${(result.files.single.size / 1024).toStringAsFixed(2)} KB";
-          });
-        } else {
-          String path = result.files.single.path ?? '';
-          // For non-web
-          setState(() {
-            fileData =
-                "Selected file: ${result.files.single.name}, Path: $path";
-          });
-        }
+        setState(() {
+          fileData =
+              "Selected file: ${result.files.single.name}, Size: ${(result.files.single.size / 1024).toStringAsFixed(2)} KB";
+        });
       }
     } catch (e) {
       setState(() {
@@ -203,25 +191,15 @@ class _HomePageState extends State<HomePage> {
       }
 
       final Image image;
-      if (kIsWeb) {
-        image = Image.network(photo!.path);
-      } else {
-        //image = Image.file(File(photo!.path));
-      }
+      image = Image.network(photo!.path);
 
       if (photo != null) {
-        if (kIsWeb) {
-          Image.network(photo.path);
-          final bytes = await photo.readAsBytes();
-          setState(() {
-            imageData = "Image captured: ${photo!.name}";
-            imageBytes = bytes;
-          });
-        } else {
-          setState(() {
-            imageData = "Image captured: ${photo!.path}";
-          });
-        }
+        Image.network(photo.path);
+        final bytes = await photo.readAsBytes();
+        setState(() {
+          imageData = "Image captured: ${photo!.name}";
+          imageBytes = bytes;
+        });
       } else {
         setState(() {
           imageData = "No image selected or camera access denied";
@@ -236,51 +214,40 @@ class _HomePageState extends State<HomePage> {
 
   void _scanQR() {
     // For web, provide alternative solution
-    if (kIsWeb) {
-      // Show an info dialog explaining browser limitations
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('QR Code Scanning on Web'),
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                  'QR scanning on web has limitations due to browser security. Options:'),
-              SizedBox(height: 10),
-              Text('1. Upload a QR code image'),
-              Text('2. Allow camera access when prompted'),
-              // Text('3. For best experience, try Chrome or Edge')
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _pickImageQR();
-              },
-              child: const Text('Upload QR Image'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _attemptCameraQR();
-              },
-              child: const Text('Try Camera'),
-            ),
+    // Show an info dialog explaining browser limitations
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('QR Code Scanning on Web'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+                'QR scanning on web has limitations due to browser security. Options:'),
+            SizedBox(height: 10),
+            Text('1. Upload a QR code image'),
+            Text('2. Allow camera access when prompted'),
+            // Text('3. For best experience, try Chrome or Edge')
           ],
         ),
-      );
-    } else {
-      // For non-web platforms, use normal QR scanner
-      Navigator.pushNamed(context, '/qr_scanner').then((value) {
-        if (value != null) {
-          setState(() {
-            qrText = value.toString();
-          });
-        }
-      });
-    }
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _pickImageQR();
+            },
+            child: const Text('Upload QR Image'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _attemptCameraQR();
+            },
+            child: const Text('Try Camera'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _attemptCameraQR() {
@@ -325,16 +292,15 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (kIsWeb)
-              Container(
-                padding: const EdgeInsets.all(8),
-                margin: const EdgeInsets.only(bottom: 16),
-                color: Colors.amber.shade100,
-                child: Text(
-                  html.window.location.href,
-                  style: const TextStyle(fontSize: 14),
-                ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.only(bottom: 16),
+              color: Colors.amber.shade100,
+              child: Text(
+                html.window.location.href,
+                style: const TextStyle(fontSize: 14),
               ),
+            ),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),

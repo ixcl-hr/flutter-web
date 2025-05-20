@@ -28,6 +28,10 @@ environment:
 # dependencies can be manually updated by changing the version numbers below to
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
+dependency_overrides:
+  camera: any
+
+
 dependencies:
   flutter:
     sdk: flutter
@@ -47,6 +51,8 @@ dependencies:
   image_picker_for_web: ^2.2.0
   flutter_picture_taker: ^0.1.0
   gap: ^3.0.1
+  camera_camera: ^3.0.0
+
 
 
 dev_dependencies:
