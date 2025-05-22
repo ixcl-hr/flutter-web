@@ -20,23 +20,28 @@ class _TakecameraState extends State<Takecamera> {
   @override
   Widget build(BuildContext context) => Scaffold(
         body: CameraCamera(
-          onFile: (file) => print(file),
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => CameraCamera(
-                          onFile: (file) {
-                            photos.add(file, null);
-                            //When take foto you should close camera
-                            Navigator.pop(context);
-                            setState(() {});
-                          },
-                        )));
+          // onFile: (file) => print(file),
+          onFile: (file) {
+            //photos.add(file);
+            Navigator.pop(context);
+            setState(() {});
           },
-          child: Icon(Icons.camera_alt),
         ),
+        // floatingActionButton: FloatingActionButton(
+        //   onPressed: () {
+        //     Navigator.push(
+        //         context,
+        //         MaterialPageRoute(
+        //             builder: (_) => CameraCamera(
+        //                   onFile: (file) {
+        //                     photos.add(file, null);
+        //                     //When take foto you should close camera
+        //                     Navigator.pop(context);
+        //                     setState(() {});
+        //                   },
+        //                 )));
+        //   },
+        //   child: Icon(Icons.camera_alt),
+        // ),
       );
 }
